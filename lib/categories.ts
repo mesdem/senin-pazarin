@@ -1,0 +1,97 @@
+import {
+  TvIcon,
+  ComputerDesktopIcon,
+  DevicePhoneMobileIcon,
+  WrenchIcon,
+  HomeModernIcon,
+  BuildingStorefrontIcon,
+  CubeIcon,
+  MusicalNoteIcon,
+  BookOpenIcon,
+  GiftIcon,
+  CommandLineIcon,
+  CameraIcon,
+  BriefcaseIcon,
+  ShoppingBagIcon,
+} from "@heroicons/react/24/solid";
+
+export const categories = [
+  {
+    id: "electronics",
+    name: "Elektronik",
+    icon: TvIcon,
+    color: "bg-blue-500/10 text-blue-600",
+  },
+  {
+    id: "computers",
+    name: "Bilgisayar",
+    icon: ComputerDesktopIcon,
+    color: "bg-purple-500/10 text-purple-600",
+  },
+  {
+    id: "phones",
+    name: "Telefon",
+    icon: DevicePhoneMobileIcon,
+    color: "bg-rose-500/10 text-rose-600",
+  },
+  {
+    id: "home",
+    name: "Ev Eşyaları",
+    icon: HomeModernIcon,
+    color: "bg-green-500/10 text-green-600",
+  },
+  {
+    id: "tools",
+    name: "Tamir / Hırdavat",
+    icon: WrenchIcon,
+    color: "bg-yellow-500/10 text-yellow-600",
+  },
+  {
+    id: "fashion",
+    name: "Giyim",
+    icon: ShoppingBagIcon,
+    color: "bg-pink-500/10 text-pink-600",
+  },
+  {
+    id: "books",
+    name: "Kitap",
+    icon: BookOpenIcon,
+    color: "bg-orange-500/10 text-orange-600",
+  },
+  {
+    id: "music",
+    name: "Müzik",
+    icon: MusicalNoteIcon,
+    color: "bg-emerald-500/10 text-emerald-600",
+  },
+  {
+    id: "camera",
+    name: "Kamera",
+    icon: CameraIcon,
+    color: "bg-cyan-500/10 text-cyan-600",
+  },
+  {
+    id: "toys",
+    name: "Oyuncak",
+    icon: CubeIcon,
+    color: "bg-indigo-500/10 text-indigo-600",
+  },
+  {
+    id: "market",
+    name: "Market / Gıda",
+    icon: BuildingStorefrontIcon,
+    color: "bg-red-500/10 text-red-600",
+  },
+  {
+    id: "gift",
+    name: "Hediye",
+    icon: GiftIcon,
+    color: "bg-teal-500/10 text-teal-600",
+  },
+  {
+    id: "jobs",
+    name: "İş İlanları",
+    icon: BriefcaseIcon,
+    color: "bg-slate-500/10 text-slate-600",
+  },
+];
