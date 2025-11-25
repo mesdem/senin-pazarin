@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import ThemeToggle from "./ThemeToggle";
+
 import {
   ShoppingCartIcon,
   ChatBubbleLeftRightIcon,
@@ -117,8 +117,6 @@ export default function HeaderNav() {
             >
               <HeartIcon className="h-5 w-5" />
             </Link>
-
-            <ThemeToggle />
 
             {user ? (
               <div className="flex items-center gap-2">
