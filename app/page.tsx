@@ -146,8 +146,8 @@ export default function HomePage() {
                 </span>
               </h1>
               <p className="text-sm text-slate-600 dark:text-slate-400">
-                Şehrindeki insanlarla güvenli bir şekilde ikinci el ürün alıp
-                sat. İlan ver, mesajlaş, satıcı puanlarını gör; hepsi tek yerde.
+                Türkiye’nin her yerinde güvenle ikinci el ürün alıp sat. İlan
+                ver, mesajlaş, satıcı puanlarını gör — hepsi tek platformda.
               </p>
             </div>
 

@@ -1,202 +1,250 @@
-// app/explore/page.tsx
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
-import Link from "next/link";
-import { supabase } from "@/lib/supabaseClient";
-import type { ListingWithImages } from "@/lib/types";
-import { CATEGORY_GROUPS } from "@/lib/categories";
+import { useEffect, useState } from "react";
+import { TURKISH_CITIES } from "@/lib/cities";
 
-function ExploreContent() {
-  const searchParams = useSearchParams();
+type SortType = "newest" | "price_asc" | "price_desc";
 
-  const [listings, setListings] = useState<ListingWithImages[]>([]);
-  const [loading, setLoading] = useState(true);
+type Listing = {
+  id: string;
+  title: string;
+  city: string | null;
+  price: number;
+  created_at: string;
+};
 
-  const selectedCategory = searchParams.get("category") || "";
-  const query = searchParams.get("q") || "";
+export default function KesfetPage() {
+  const [search, setSearch] = useState("");
+  const [city, setCity] = useState("");
+  const [minPrice, setMinPrice] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
+  const [sort, setSort] = useState<SortType>("newest");
 
-  useEffect(() => {
-    const load = async () => {
+  const [listings, setListings] = useState<Listing[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function fetchListings() {
+    try {
       setLoading(true);
+      setError(null);
 
-      let queryBuilder = supabase
-        .from("listings")
-        .select("*, listing_images(image_url)")
-        .eq("status", "active")
-        .order("created_at", { ascending: false })
-        .limit(40);
+      const params = new URLSearchParams();
 
-      if (selectedCategory) {
-        queryBuilder = queryBuilder.eq("category", selectedCategory);
+      if (search) params.set("q", search);
+      if (city) params.set("city", city);
+      if (minPrice) params.set("min", minPrice);
+      if (maxPrice) params.set("max", maxPrice);
+      if (sort) params.set("sort", sort);
+
+      const res = await fetch(`/api/listings?${params.toString()}`, {
+        method: "GET",
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error || "İlanlar yüklenirken bir hata oluştu.");
       }
 
-      if (query) {
-        // basit arama: başlıkta arama
-        queryBuilder = queryBuilder.ilike("title", `%${query}%`);
-      }
-
-      const { data, error } = await queryBuilder;
-
-      if (!error && data) {
-        const mapped = (data as any[]).map((row) => ({
-          ...row,
-          images: row.listing_images as { image_url: string }[] | undefined,
-        }));
-        setListings(mapped);
-      } else {
-        setListings([]);
-      }
-
+      const json = await res.json();
+      setListings(json.data || []);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "Bilinmeyen bir hata oluştu.");
+    } finally {
       setLoading(false);
-    };
+    }
+  }
 
-    load();
-  }, [selectedCategory, query]);
+  // Sayfa ilk açıldığında ilanları yükle
+  useEffect(() => {
+    fetchListings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function resetFilters() {
+    setSearch("");
+    setCity("");
+    setMinPrice("");
+    setMaxPrice("");
+    setSort("newest");
+    fetchListings();
+  }
 
   return (
-    <div className="space-y-6 py-4">
-      {/* Başlık + arama */}
-      <section className="space-y-3">
-        <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-50">
-          Keşfet
-        </h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">
-          Farklı kategorilerde ikinci el ürünleri keşfet.
-        </p>
-
-        <form onSubmit={(e) => e.preventDefault()} className="mt-2 flex gap-2">
-          <input
-            type="text"
-            name="q"
-            defaultValue={query}
-            placeholder="Ürün adı, marka, kategori ara..."
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none placeholder:text-slate-400 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 dark:border-slate-700 dark:bg-slate-900"
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                const form = e.currentTarget.form;
-                if (!form) return;
-                const value = (e.currentTarget as HTMLInputElement).value;
-                const params = new URLSearchParams(
-                  window.location.search || ""
-                );
-                if (value) {
-                  params.set("q", value);
-                } else {
-                  params.delete("q");
-                }
-                const cat = params.get("category");
-                const href =
-                  "/explore" +
-                  (params.toString() ? `?${params.toString()}` : "");
-                window.location.href = href;
-              }
-            }}
-          />
-        </form>
-      </section>
-
-      {/* Kategori grupları */}
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-          Kategoriler
-        </h2>
-        <div className="grid gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-          {CATEGORY_GROUPS.map((group) => (
-            <Link
-              key={group.key}
-              href={
-                "/explore?category=" +
-                encodeURIComponent(group.id) +
-                (query ? `&q=${encodeURIComponent(query)}` : "")
-              }
-              className={`group flex flex-col items-start justify-between rounded-2xl border px-3 py-3 text-xs transition hover:border-cyan-400 hover:bg-cyan-50/60 dark:hover:bg-slate-900/70 ${
-                selectedCategory === group.id
-                  ? "border-cyan-400 bg-cyan-50/70 dark:border-cyan-400/80 dark:bg-slate-900"
-                  : "border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-950"
-              }`}
-            >
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                {group.label}
-              </span>
-              <span className="mt-2 line-clamp-3 text-[11px] text-slate-500 dark:text-slate-400">
-                {group.items.map((item) => item.label).join(", ")}
-              </span>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      {/* İlan listesi */}
-      <section className="space-y-3">
-        <div className="flex items-center justify-between text-sm">
-          <h2 className="font-semibold text-slate-800 dark:text-slate-100">
-            {selectedCategory
-              ? "Bu kategorideki ilanlar"
-              : "Son eklenen ilanlar"}
-          </h2>
-          <span className="text-xs text-slate-500 dark:text-slate-400">
-            {loading
-              ? "Yükleniyor..."
-              : listings.length === 0
-              ? "İlan bulunamadı"
-              : `${listings.length} ilan bulundu`}
-          </span>
-        </div>
-
-        {loading ? (
-          <p className="mt-2 text-xs text-slate-500">İlanlar yükleniyor…</p>
-        ) : listings.length === 0 ? (
-          <p className="mt-2 text-xs text-slate-500">
-            Bu filtrelerle eşleşen ilan bulunamadı.
+    <div className="min-h-screen bg-neutral-100 dark:bg-neutral-950">
+      <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col gap-6 md:flex-row">
+        {/* SOL: Koyu sidebar filtre paneli */}
+        <aside className="w-full md:w-72 rounded-2xl bg-neutral-900 text-neutral-50 p-4 md:sticky md:top-24 h-fit shadow-lg">
+          <h1 className="font-semibold text-xl mb-1">Keşfet</h1>
+          <p className="text-xs text-neutral-400 mb-4">
+            Türkiye’nin her yerinden ilanları filtrele.
           </p>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-            {listings.map((item) => {
-              const heroImg = item.images?.[0]?.image_url;
-              return (
-                <Link
-                  key={item.id}
-                  href={`/listings/${item.id}`}
-                  className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-[2px] hover:border-cyan-400 hover:shadow-md dark:border-slate-800 dark:bg-slate-900"
-                >
-                  {heroImg ? (
-                    <img
-                      src={heroImg}
-                      alt={item.title}
-                      className="h-40 w-full object-cover"
-                    />
-                  ) : (
-                    <div className="h-40 w-full bg-gradient-to-br from-cyan-500/30 to-violet-500/30" />
-                  )}
-                  <div className="space-y-1 p-3 text-xs">
-                    <p className="line-clamp-2 text-sm font-semibold text-slate-900 group-hover:text-cyan-600 dark:text-slate-50 dark:group-hover:text-cyan-300">
-                      {item.title}
-                    </p>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                      {item.city} • {item.category} • {item.condition}
-                    </p>
-                    <p className="text-sm font-bold text-cyan-600 dark:text-cyan-300">
-                      {item.price.toLocaleString("tr-TR")} ₺
-                    </p>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        )}
-      </section>
-    </div>
-  );
-}
 
-export default function ExplorePage() {
-  return (
-    <Suspense
-      fallback={<p className="p-4 text-sm text-slate-500">Yükleniyor…</p>}
-    >
-      <ExploreContent />
-    </Suspense>
+          {/* Arama */}
+          <div className="space-y-1 mb-3">
+            <label className="text-xs font-medium text-neutral-300">
+              Arama
+            </label>
+            <input
+              className="w-full rounded-lg bg-neutral-800 border border-neutral-700 px-2 py-1.5 text-sm text-neutral-50 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              placeholder="Ürün adı, anahtar kelime..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+
+          {/* Şehir */}
+          <div className="space-y-1 mb-3">
+            <label className="text-xs font-medium text-neutral-300">
+              Şehir
+            </label>
+            <select
+              className="w-full rounded-lg bg-neutral-800 border border-neutral-700 px-2 py-1.5 text-sm text-neutral-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+            >
+              <option value="">Tüm Türkiye</option>
+              {TURKISH_CITIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Fiyat aralığı */}
+          <div className="space-y-1 mb-3">
+            <label className="text-xs font-medium text-neutral-300">
+              Fiyat aralığı (TL)
+            </label>
+            <div className="flex gap-2">
+              <input
+                className="w-1/2 rounded-lg bg-neutral-800 border border-neutral-700 px-2 py-1.5 text-sm text-neutral-50 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                placeholder="Min"
+                value={minPrice}
+                onChange={(e) => setMinPrice(e.target.value)}
+              />
+              <input
+                className="w-1/2 rounded-lg bg-neutral-800 border border-neutral-700 px-2 py-1.5 text-sm text-neutral-50 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                placeholder="Max"
+                value={maxPrice}
+                onChange={(e) => setMaxPrice(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Sıralama */}
+          <div className="space-y-1 mb-4">
+            <label className="text-xs font-medium text-neutral-300">
+              Sırala
+            </label>
+            <select
+              className="w-full rounded-lg bg-neutral-800 border border-neutral-700 px-2 py-1.5 text-sm text-neutral-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              value={sort}
+              onChange={(e) => setSort(e.target.value as SortType)}
+            >
+              <option value="newest">En yeni ilanlar</option>
+              <option value="price_asc">Fiyat (artan)</option>
+              <option value="price_desc">Fiyat (azalan)</option>
+            </select>
+          </div>
+
+          {/* Butonlar */}
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={fetchListings}
+              className="w-full rounded-lg px-3 py-2 text-sm font-medium bg-emerald-500 hover:bg-emerald-400 text-neutral-900 transition disabled:opacity-60"
+              type="button"
+              disabled={loading}
+            >
+              {loading ? "Yükleniyor..." : "Filtreleri uygula"}
+            </button>
+            <button
+              onClick={resetFilters}
+              className="w-full rounded-lg px-3 py-2 text-xs border border-neutral-700 text-neutral-300 hover:bg-neutral-800 transition disabled:opacity-60"
+              type="button"
+              disabled={loading}
+            >
+              Temizle
+            </button>
+          </div>
+        </aside>
+
+        {/* SAĞ: İçerik alanı */}
+        <main className="flex-1">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <div>
+              <h2 className="font-semibold text-lg text-neutral-900 dark:text-neutral-50">
+                İlanlar
+              </h2>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                Filtrelerini değiştirerek Türkiye genelindeki ilanları keşfet.
+              </p>
+            </div>
+          </div>
+
+          {/* Seçili filtrelerin özeti */}
+          <div className="mb-4 rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-3 text-xs text-neutral-600 dark:text-neutral-300">
+            <div>
+              <span className="font-semibold">Arama:</span> {search || "—"}
+            </div>
+            <div>
+              <span className="font-semibold">Şehir:</span>{" "}
+              {city || "Tüm Türkiye"}
+            </div>
+            <div>
+              <span className="font-semibold">Fiyat:</span>{" "}
+              {(minPrice || "—") + " - " + (maxPrice || "—")} TL
+            </div>
+            <div>
+              <span className="font-semibold">Sıralama:</span>{" "}
+              {sort === "newest"
+                ? "En yeni ilanlar"
+                : sort === "price_asc"
+                ? "Fiyat (artan)"
+                : "Fiyat (azalan)"}
+            </div>
+          </div>
+
+          {/* Hata mesajı */}
+          {error && <div className="mb-3 text-xs text-red-500">{error}</div>}
+
+          {/* İlan kartları */}
+          {loading && listings.length === 0 ? (
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">
+              İlanlar yükleniyor...
+            </p>
+          ) : listings.length === 0 ? (
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">
+              Kriterlerine uygun ilan bulunamadı.
+            </p>
+          ) : (
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+              {listings.map((listing) => (
+                <div
+                  key={listing.id}
+                  className="rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-3 shadow-sm hover:shadow-md transition"
+                >
+                  <div className="h-32 mb-2 rounded-xl bg-neutral-200 dark:bg-neutral-800" />
+                  <div className="text-sm font-semibold text-neutral-900 dark:text-neutral-50 line-clamp-1">
+                    {listing.title}
+                  </div>
+                  <div className="text-xs text-neutral-500 dark:text-neutral-400">
+                    {(listing.city as string) || "Türkiye geneli"} • Kategori
+                  </div>
+                  <div className="mt-1 font-bold text-emerald-600 dark:text-emerald-400">
+                    {listing.price} TL
+                  </div>
+                  <div className="mt-1 text-[10px] text-neutral-400">
+                    {new Date(listing.created_at).toLocaleDateString("tr-TR")}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </main>
+      </div>
+    </div>
   );
 }

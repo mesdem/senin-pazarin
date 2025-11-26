@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-
 import {
   ShoppingCartIcon,
   ChatBubbleLeftRightIcon,
@@ -41,6 +40,7 @@ export default function HeaderNav() {
 
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [cartCount, setCartCount] = useState<number>(0);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const loadUser = async () => {
@@ -50,15 +50,26 @@ export default function HeaderNav() {
       if (u) {
         setUser({ id: u.id, email: u.email ?? null });
 
+        // Sepet sayısı
         const { count } = await supabase
           .from("cart_items")
           .select("id", { count: "exact", head: true })
           .eq("user_id", u.id);
 
         setCartCount(count ?? 0);
+
+        // Admin mi?
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("is_admin")
+          .eq("id", u.id)
+          .maybeSingle();
+
+        setIsAdmin(!!profileData?.is_admin);
       } else {
         setUser(null);
         setCartCount(0);
+        setIsAdmin(false);
       }
     };
 
@@ -68,23 +79,25 @@ export default function HeaderNav() {
   async function handleLogout() {
     await supabase.auth.signOut();
     setUser(null);
+    setIsAdmin(false);
     router.push("/");
   }
 
   return (
     <>
       <header className="border-b border-slate-200 bg-white/80 backdrop-blur-sm dark:border-slate-800 dark:bg-slate-950/80">
-        <div className="mx-auto flex max-w-screen-2xl items-center justify-between gap-4 px-4 py-3">
-          {/* ✔ Sadece sol köşede logo */}
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
+          {/* Sol logo */}
           <Link href="/" className="flex items-center">
             <img src="/logo.svg" alt="Senin Pazarın" className="h-8 w-auto" />
           </Link>
 
-          {/* Menü */}
+          {/* Orta menü */}
           <nav className="hidden items-center gap-4 md:flex">
             <NavLink href="/explore" label="Keşfet" />
             <NavLink href="/favorites" label="Favorilerim" />
             <NavLink href="/orders" label="Siparişlerim" />
+            {isAdmin && <NavLink href="/admin/messages" label="Yönetim" />}
           </nav>
 
           {/* Sağ taraf */}
@@ -159,6 +172,7 @@ export default function HeaderNav() {
         <Link href="/favorites">Favoriler</Link>
         <Link href="/cart">Sepet</Link>
         <Link href="/profile">Profil</Link>
+        {isAdmin && <Link href="/admin/messages">Yönetim</Link>}
       </div>
     </>
   );

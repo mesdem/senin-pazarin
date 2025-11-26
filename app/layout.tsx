@@ -1,4 +1,5 @@
 // app/layout.tsx
+import Footer from "@/components/Footer";
 import "./globals.css";
 import type { ReactNode } from "react";
 import HeaderNav from "@/components/HeaderNav";
@@ -12,6 +13,9 @@ export const metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="tr" suppressHydrationWarning>
+      <head>
+        <link rel="icon" href="/favicon.png" sizes="any" />
+      </head>
       <body
         className="
           bg-slate-50 text-slate-900
@@ -28,6 +32,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <main className="mx-auto max-w-screen-xl px-5 py-4">
               {children}
             </main>
+            <Footer />
           </div>
         </ThemeProvider>
       </body>
