@@ -67,7 +67,7 @@ export default function ContactPage() {
             className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none
                        focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400
                        dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-            placeholder="Örneğin: Mesut Demir"
+            placeholder=""
             value={name}
             onChange={(e) => setName(e.target.value)}
           />

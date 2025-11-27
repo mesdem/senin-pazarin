@@ -265,7 +265,7 @@ export default function ProfilePage() {
               </label>
               <input
                 className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-                placeholder="ornekmesut"
+                placeholder=""
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
               />
@@ -279,7 +279,7 @@ export default function ProfilePage() {
               </label>
               <input
                 className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-                placeholder="Mesut D."
+                placeholder=""
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
               />
