@@ -15,16 +15,94 @@ type SellerProfile = {
   avatar_url: string | null;
 };
 
+type RecentListingEntry = {
+  id: string;
+  title: string;
+  price: number;
+  city: string | null;
+  category: string | null;
+  condition: string | null;
+  image_url: string | null;
+  viewedAt: string;
+};
+
+type ListingImage = {
+  image_url: string;
+  id?: string;
+};
+
+type ListingWithImages = {
+  id: string;
+  title: string;
+  description: string;
+  price: number;
+  city: string | null;
+  category: string | null;
+  condition: string | null;
+  status: "active" | "sold" | "inactive";
+  ships_in_24h?: boolean;
+  listing_images?: ListingImage[];
+  images?: ListingImage[];
+  user_id: string;
+};
+
 export default function ListingDetailPage() {
   const params = useParams();
   const router = useRouter();
   const id = params?.id as string;
 
-  const [item, setItem] = useState<any | null>(null);
+  const [item, setItem] = useState<ListingWithImages | null>(null);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
   const [msg, setMsg] = useState("");
   const [seller, setSeller] = useState<SellerProfile | null>(null);
+
+  // Son baktığın ilanlar: localStorage'a yaz
+  useEffect(() => {
+    if (!item) return;
+    if (typeof window === "undefined") return;
+
+    try {
+      const raw = window.localStorage.getItem("recentListings");
+      let parsed: RecentListingEntry[] = raw ? JSON.parse(raw) : [];
+
+      // Aynı ilan zaten varsa listeden çıkar
+      parsed = parsed.filter((entry) => entry.id !== String(item.id));
+
+      // İlanın görseli (önce images, sonra listing_images fallback)
+      const imageUrl =
+        item.images?.[0]?.image_url ??
+        item.listing_images?.[0]?.image_url ??
+        null;
+
+      // En üste ekle
+      parsed.unshift({
+        id: String(item.id),
+        title: item.title,
+        price: item.price,
+        city: item.city,
+        category: item.category,
+        condition: item.condition,
+        image_url: imageUrl,
+        viewedAt: new Date().toISOString(),
+      });
+
+      // En fazla 20 kayıt tut
+      parsed = parsed.slice(0, 20);
+
+      window.localStorage.setItem("recentListings", JSON.stringify(parsed));
+    } catch (err) {
+      console.error("recentListings yazılırken hata:", err);
+    }
+  }, [item]);
+
+  // Galeri için seçili görsel
+  const [selectedIndex, setSelectedIndex] = useState(0);
+
+  // Benzer ilanlar
+  const [similarListings, setSimilarListings] = useState<ListingWithImages[]>(
+    []
+  );
 
   useEffect(() => {
     const load = async () => {
@@ -37,7 +115,7 @@ export default function ListingDetailPage() {
       // 2) İlan + görseller
       const { data, error } = await supabase
         .from("listings")
-        .select("*, listing_images(image_url)")
+        .select("*, listing_images(image_url, id)")
         .eq("id", id)
         .single();
 
@@ -48,13 +126,13 @@ export default function ListingDetailPage() {
       }
 
       const listingAny = data as any;
-      const mapped = {
+      const mapped: ListingWithImages = {
         ...listingAny,
-        images: listingAny.listing_images as
-          | { image_url: string }[]
-          | undefined,
+        images: (listingAny.listing_images || []) as ListingImage[],
       };
+
       setItem(mapped);
+      setSelectedIndex(0);
 
       // 3) Satıcı profili
       const sellerId = listingAny.user_id as string;
@@ -66,6 +144,50 @@ export default function ListingDetailPage() {
 
       if (profileData) {
         setSeller(profileData as SellerProfile);
+      }
+
+      // 4) Benzer ilanlar:
+      // Önce: aynı kategori + aktif + bu ilan hariç
+      let similar: any[] = [];
+
+      if (listingAny.category) {
+        const { data: similarCatData } = await supabase
+          .from("listings")
+          .select("*, listing_images(image_url, id)")
+          .eq("status", "active")
+          .eq("category", listingAny.category)
+          .neq("id", listingAny.id)
+          .order("created_at", { ascending: false })
+          .limit(8);
+
+        if (similarCatData && similarCatData.length > 0) {
+          similar = similarCatData;
+        }
+      }
+
+      // Eğer hâlâ boşsa: kategori bakmadan en yeni aktif ilanlar (bu ilan hariç)
+      if (!similar || similar.length === 0) {
+        const { data: similarAnyData } = await supabase
+          .from("listings")
+          .select("*, listing_images(image_url, id)")
+          .eq("status", "active")
+          .neq("id", listingAny.id)
+          .order("created_at", { ascending: false })
+          .limit(8);
+
+        if (similarAnyData && similarAnyData.length > 0) {
+          similar = similarAnyData;
+        }
+      }
+
+      if (similar && similar.length > 0) {
+        const mappedSimilar = (similar as any[]).map((row) => ({
+          ...row,
+          images: (row.listing_images || []) as ListingImage[],
+        }));
+        setSimilarListings(mappedSimilar as ListingWithImages[]);
+      } else {
+        setSimilarListings([]);
       }
 
       setLoading(false);
@@ -145,7 +267,6 @@ export default function ListingDetailPage() {
     }
   }
 
-  // 🛒 SEPETE EKLE FONKSİYONU — bileşenin İÇİNDE, diğer handle'ların yanında
   async function handleAddToCart() {
     if (!item) return;
 
@@ -154,7 +275,6 @@ export default function ListingDetailPage() {
       return;
     }
 
-    // Kendi ilanını sepete ekleme
     if (item.user_id === userId) {
       setMsg("Kendi ilanını sepete ekleyemezsin.");
       return;
@@ -182,7 +302,12 @@ export default function ListingDetailPage() {
     return <p className="mt-4 text-sm text-slate-400">İlan bulunamadı.</p>;
   }
 
-  const heroImg = item.images?.[0]?.image_url;
+  const images: ListingImage[] = item.images || [];
+  const currentImage =
+    images.length > 0
+      ? images[Math.min(selectedIndex, images.length - 1)]
+      : null;
+
   const isOwner = userId && item.user_id === userId;
   const currentStatus: "active" | "sold" | "inactive" = item.status || "active";
 
@@ -209,30 +334,113 @@ export default function ListingDetailPage() {
   return (
     <div className="grid gap-6 py-4 md:grid-cols-[2fr,1fr]">
       <div className="space-y-4">
-        <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-          {/* Favori butonu */}
-          <div className="absolute right-3 top-3 z-20">
-            <FavoriteButton listingId={String(item.id)} />
+        {/* Ana görsel + thumbnail galerisi */}
+        <div className="space-y-3">
+          <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+            <div className="absolute right-3 top-3 z-20">
+              <FavoriteButton listingId={String(item.id)} />
+            </div>
+
+            <div className="relative w-full aspect-[4/3] bg-slate-200 dark:bg-slate-900">
+              {currentImage ? (
+                <img
+                  src={currentImage.image_url}
+                  alt={item.title}
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-xs text-slate-500 dark:text-slate-400">
+                  Bu ilana ait görsel bulunmuyor.
+                </div>
+              )}
+            </div>
           </div>
 
-          {heroImg ? (
-            <img
-              src={heroImg}
-              alt={item.title}
-              className="h-72 w-full object-cover"
-            />
-          ) : (
-            <div className="h-72 w-full bg-gradient-to-br from-cyan-500/30 to-violet-500/30" />
+          {images.length > 1 && (
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {images.map((img, idx) => {
+                const isActive = idx === selectedIndex;
+                return (
+                  <button
+                    key={img.id ?? idx}
+                    type="button"
+                    onClick={() => setSelectedIndex(idx)}
+                    className={`relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl border transition ${
+                      isActive
+                        ? "border-cyan-400 ring-2 ring-cyan-400/60"
+                        : "border-slate-300 dark:border-slate-700 hover:border-cyan-300"
+                    }`}
+                  >
+                    <img
+                      src={img.image_url}
+                      alt={`Görsel ${idx + 1}`}
+                      className="h-full w-full object-cover"
+                    />
+                  </button>
+                );
+              })}
+            </div>
           )}
         </div>
 
+        {/* Açıklama */}
         <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-800 whitespace-pre-line dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
           {item.description}
         </div>
 
-        {/* İlan yorumları / değerlendirmeler */}
+        {/* Yorumlar */}
         <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
           <ListingReviews listingId={String(item.id)} />
+        </div>
+
+        {/* Benzer ilanlar */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+          <h2 className="mb-3 text-sm font-semibold text-slate-900 dark:text-slate-100">
+            Benzer ilanlar
+          </h2>
+
+          {similarListings.length === 0 ? (
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Bu ürüne benzer başka ilan bulunamadı.
+            </p>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {similarListings.map((listing) => {
+                const heroImg = listing.images?.[0]?.image_url;
+                return (
+                  <Link
+                    key={listing.id}
+                    href={`/listings/${listing.id}`}
+                    className="group overflow-hidden rounded-2xl border border-slate-200 bg-white text-xs shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-slate-700 dark:bg-slate-900/80"
+                  >
+                    <div className="relative w-full aspect-[4/3] bg-slate-200 dark:bg-slate-800">
+                      {heroImg ? (
+                        <img
+                          src={heroImg}
+                          alt={listing.title}
+                          className="absolute inset-0 h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="h-full w-full bg-gradient-to-br from-cyan-500/30 to-violet-500/30" />
+                      )}
+                    </div>
+                    <div className="space-y-1 p-3">
+                      <p className="line-clamp-1 text-sm font-semibold text-slate-900 group-hover:text-cyan-600 dark:text-slate-100 dark:group-hover:text-cyan-300">
+                        {listing.title}
+                      </p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                        {listing.city || "Türkiye geneli"} •{" "}
+                        {listing.condition || "Durum bilinmiyor"}
+                      </p>
+                      <p className="text-sm font-bold text-cyan-700 dark:text-cyan-300">
+                        {listing.price.toLocaleString("tr-TR")} ₺
+                      </p>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
@@ -243,6 +451,14 @@ export default function ListingDetailPage() {
               <h1 className="text-lg font-semibold">{item.title}</h1>
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                 {item.city} • {item.category} • {item.condition}
+              </p>
+              {item.ships_in_24h && (
+                <p className="mt-1 inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-1 text-[11px] font-semibold text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300">
+                  🚚 24 saatte kargoda
+                </p>
+              )}
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                Kargo ücreti: Satıcı öder
               </p>
             </div>
             <span
@@ -256,7 +472,6 @@ export default function ListingDetailPage() {
             {item.price.toLocaleString("tr-TR")} ₺
           </p>
 
-          {/* 🛒 Sepet + Mesaj butonları */}
           {!isOwner && currentStatus === "active" && (
             <div className="mt-3 space-y-2">
               <button
@@ -281,7 +496,6 @@ export default function ListingDetailPage() {
             </div>
           )}
 
-          {/* Şüpheli ilan bildir */}
           {!isOwner && (
             <button
               className="mt-2 w-full rounded-xl border border-red-500/60 py-2 text-xs font-semibold text-red-500 hover:bg-red-500/10 dark:text-red-300"
@@ -291,21 +505,18 @@ export default function ListingDetailPage() {
             </button>
           )}
 
-          {/* İlan aktif değilse ve sahip değilsen küçük bilgi */}
           {!isOwner && currentStatus !== "active" && (
             <p className="mt-3 text-xs text-amber-500 dark:text-amber-300">
               Bu ilan artık aktif değil.
             </p>
           )}
 
-          {/* İlan sahibiysen: yönetim paneli */}
           {isOwner && (
             <div className="mt-4 space-y-3 border-t border-slate-200 pt-3 text-xs dark:border-slate-800">
               <p className="text-slate-500 dark:text-slate-400">
                 Bu ilan sana ait.
               </p>
 
-              {/* Durum butonları */}
               <div className="flex flex-wrap gap-2">
                 {currentStatus !== "sold" && (
                   <button
@@ -338,7 +549,6 @@ export default function ListingDetailPage() {
                 )}
               </div>
 
-              {/* Düzenle / Sil */}
               <div className="flex gap-2 pt-1">
                 <Link
                   href={`/listings/${item.id}/edit`}
@@ -370,12 +580,11 @@ export default function ListingDetailPage() {
           )}
         </div>
 
-        {/* Satıcı kartı */}
         {seller && (
           <div className="rounded-2xl border border-slate-200 bg-white p-4 text-xs dark:border-slate-800 dark:bg-slate-900">
             <p className="text-slate-500 dark:text-slate-400">Satıcı</p>
             <div className="mt-2 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-slate-300 bg-slate-100 text-[11px] font-semibold dark:border-slate-700 dark:bg-slate-800">
+              <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-slate-300 bg-slate-100 text-[11px] font-semibold dark:border-slate-707 dark:bg-slate-800">
                 {seller.avatar_url ? (
                   <img
                     src={seller.avatar_url}
@@ -413,7 +622,6 @@ export default function ListingDetailPage() {
             Güvenli alışveriş ipuçları
           </p>
           <ul className="mt-2 list-disc space-y-1 pl-4">
-            <li>Tanımadığın kişilere kapora gönderme.</li>
             <li>Mümkünse ürünü görerek teslim al.</li>
             <li>Şüpheli ilanları bildir.</li>
           </ul>

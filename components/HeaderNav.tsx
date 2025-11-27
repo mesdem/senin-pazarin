@@ -97,7 +97,7 @@ export default function HeaderNav() {
             <NavLink href="/explore" label="Keşfet" />
             <NavLink href="/favorites" label="Favorilerim" />
             <NavLink href="/orders" label="Siparişlerim" />
-            {isAdmin && <NavLink href="/admin/messages" label="Yönetim" />}
+            {isAdmin && <NavLink href="/yonetim" label="Yönetim" />}
           </nav>
 
           {/* Sağ taraf */}
@@ -172,7 +172,7 @@ export default function HeaderNav() {
         <Link href="/favorites">Favoriler</Link>
         <Link href="/cart">Sepet</Link>
         <Link href="/profile">Profil</Link>
-        {isAdmin && <Link href="/admin/messages">Yönetim</Link>}
+        {isAdmin && <Link href="/yonetim">Yönetim</Link>}
       </div>
     </>
   );

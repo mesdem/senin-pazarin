@@ -1,10 +1,11 @@
 // app/listings/new/page.tsx
 "use client";
 
-import { useEffect, useState, ChangeEvent, FormEvent } from "react";
+import { useEffect, useState, ChangeEvent, FormEvent, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { CATEGORY_GROUPS } from "@/lib/categories";
+import { findBannedWords } from "@/lib/profanity";
 
 type ConditionOption = "Yeni" | "İyi" | "Orta" | "Kötü";
 
@@ -12,6 +13,8 @@ export default function NewListingPage() {
   const router = useRouter();
 
   const [userId, setUserId] = useState<string | null>(null);
+  const [emailConfirmed, setEmailConfirmed] = useState<boolean | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -27,19 +30,29 @@ export default function NewListingPage() {
 
   const [condition, setCondition] = useState<ConditionOption>("İyi");
 
+  const [shipsIn24h, setShipsIn24h] = useState(false);
+
   const [images, setImages] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [msg, setMsg] = useState("");
 
   useEffect(() => {
     const check = async () => {
+      setAuthLoading(true);
       const { data } = await supabase.auth.getUser();
       const u = data.user;
+
       if (!u) {
+        setUserId(null);
+        setEmailConfirmed(null);
+        setAuthLoading(false);
         router.push("/auth/login");
         return;
       }
+
       setUserId(u.id);
+      setEmailConfirmed(!!u.email_confirmed_at); // e-posta doğrulama kontrolü
+      setAuthLoading(false);
     };
     check();
   }, [router]);
@@ -52,11 +65,52 @@ export default function NewListingPage() {
     setImages((prev) => [...prev, ...fileArray].slice(0, 6)); // max 6 foto
   }
 
+  const parsedPrice = useMemo(() => {
+    const v = Number(price.replace(",", "."));
+    return Number.isNaN(v) || v <= 0 ? null : v;
+  }, [price]);
+
+  const commissionInfo = useMemo(() => {
+    if (!parsedPrice) return null;
+
+    const rate = parsedPrice <= 1000 ? 0.07 : 0.06;
+    const rateText = rate === 0.07 ? "7%" : "6%";
+    const commissionAmount = parsedPrice * rate;
+    const netAmount = parsedPrice - commissionAmount;
+
+    return {
+      rateText,
+      commissionAmount,
+      netAmount,
+    };
+  }, [parsedPrice]);
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!userId) return;
 
     setMsg("");
+
+    // 1) E-posta doğrulama şartı
+    if (emailConfirmed === false) {
+      setMsg(
+        "İlan vermek için önce e-posta adresini doğrulaman gerekiyor. Lütfen e-posta kutunu kontrol et."
+      );
+      return;
+    }
+
+    // 2) Küfür filtresi
+    const badInTitle = findBannedWords(title);
+    const badInDescription = findBannedWords(description);
+
+    if (badInTitle.length > 0 || badInDescription.length > 0) {
+      setMsg(
+        "İlan başlığı veya açıklamasında uygunsuz kelimeler tespit edildi. Lütfen daha uygun bir dil kullan."
+      );
+      return;
+    }
+
+    // 3) Zorunlu alan kontrolleri
     if (!title.trim() || !description.trim() || !price.trim() || !city.trim()) {
       setMsg("Lütfen tüm zorunlu alanları doldur.");
       return;
@@ -82,6 +136,9 @@ export default function NewListingPage() {
           category,
           condition,
           status: "active",
+          ships_in_24h: shipsIn24h,
+          // Şimdilik sabit: kargoyu her zaman satıcı öder
+          shipping_payer: "seller",
         })
         .select("id")
         .single();
@@ -135,11 +192,44 @@ export default function NewListingPage() {
     }
   }
 
+  // 1) Auth bilgisi yükleniyor
+  if (authLoading) {
+    return (
+      <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">
+        Giriş bilgilerin kontrol ediliyor…
+      </p>
+    );
+  }
+
+  // 2) Giriş yoksa
   if (!userId) {
     return (
       <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">
         İlan vermek için giriş yapmalısın…
       </p>
+    );
+  }
+
+  // 3) E-posta doğrulanmamışsa
+  if (emailConfirmed === false) {
+    return (
+      <div className="max-w-md py-6">
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100">
+          <h1 className="mb-2 text-base font-semibold">
+            E-postanı doğrulaman gerekiyor
+          </h1>
+          <p className="mb-2 text-[13px]">
+            İlan verebilmek için önce hesabına bağlı e-posta adresini
+            doğrulamalısın. Kayıt olurken gönderdiğimiz doğrulama e-postasını
+            kontrol et.
+          </p>
+          <p className="text-[12px] text-amber-800 dark:text-amber-200">
+            Eğer mail gelmediyse spam / gereksiz kutunu da kontrol et. Gerekirse
+            tekrar çıkış yapıp giriş ekranından yeni doğrulama bağlantısı
+            isteyebilirsin.
+          </p>
+        </div>
+      </div>
     );
   }
 
@@ -276,6 +366,48 @@ export default function NewListingPage() {
               <option value="Orta">Orta</option>
               <option value="Kötü">Kötü</option>
             </select>
+          </div>
+        </div>
+
+        {/* Komisyon & kazanç önizlemesi */}
+        {commissionInfo && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">
+            <p>
+              Bu ilanda Senin Pazarın hizmet bedeli:{" "}
+              <strong>{commissionInfo.rateText}</strong>
+            </p>
+            <p>
+              Hizmet bedeli:{" "}
+              <strong>
+                {commissionInfo.commissionAmount.toLocaleString("tr-TR")} ₺
+              </strong>{" "}
+              • Tahmini kazancın:{" "}
+              <strong>
+                {commissionInfo.netAmount.toLocaleString("tr-TR")} ₺
+              </strong>
+            </p>
+          </div>
+        )}
+
+        {/* Kargo ayarları – sadece 24 saatte kargo */}
+        <div className="flex flex-col gap-3 md:flex-row">
+          <div className="flex flex-1 items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs dark:border-slate-700 dark:bg-slate-900/60">
+            <input
+              id="shipsIn24h"
+              type="checkbox"
+              checked={shipsIn24h}
+              onChange={(e) => setShipsIn24h(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-slate-300 text-cyan-500 focus:ring-cyan-500 dark:border-slate-600 dark:bg-slate-900"
+            />
+            <label htmlFor="shipsIn24h" className="space-y-1">
+              <span className="font-semibold text-slate-800 dark:text-slate-100">
+                24 saatte kargo
+              </span>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Sipariş onaylandıktan sonra ürünü 24 saat içinde kargoya verme
+                sözü verirsin. İlanda özel rozetle gösterilir.
+              </p>
+            </label>
           </div>
         </div>
 

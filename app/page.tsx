@@ -29,6 +29,7 @@ export default function HomePage() {
   const [recentLocal, setRecentLocal] = useState<RecentListingEntry[]>([]);
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchCategory, setSearchCategory] = useState("");
 
   useEffect(() => {
     const load = async () => {
@@ -102,7 +103,6 @@ export default function HomePage() {
     };
 
     load();
-    // userCity’yi dependency’e koymuyoruz, yoksa iki kez çalışır
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -119,16 +119,18 @@ export default function HomePage() {
     e.preventDefault();
 
     const q = searchQuery.trim();
+    const params = new URLSearchParams();
 
-    if (!q) {
-      router.push("/explore");
+    if (q) params.set("q", q);
+    if (searchCategory) params.set("category", searchCategory);
+
+    // Hiçbir şey seçmediyse direkt keşfet sayfası
+    if (!q && !searchCategory) {
+      router.push("/kesfet");
       return;
     }
 
-    const params = new URLSearchParams();
-    params.set("search", q);
-
-    router.push(`/explore?${params.toString()}`);
+    router.push(`/kesfet?${params.toString()}`);
   }
 
   return (
@@ -151,7 +153,7 @@ export default function HomePage() {
               </p>
             </div>
 
-            {/* ARAMA FORMU */}
+            {/* ARAMA FORMU + KATEGORİ */}
             <form
               onSubmit={handleSearchSubmit}
               className="flex flex-col gap-2 rounded-2xl border border-slate-200 bg-slate-50/70 p-2 text-sm shadow-inner dark:border-slate-700 dark:bg-slate-900/60"
@@ -167,6 +169,21 @@ export default function HomePage() {
                   placeholder="Örn: iPhone 11, çalışma masası, PS4, kitaplık..."
                   className="flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
                 />
+
+                {/* 🔹 Kategori seçimi */}
+                <select
+                  value={searchCategory}
+                  onChange={(e) => setSearchCategory(e.target.value)}
+                  className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100 sm:w-48"
+                >
+                  <option value="">Tüm kategoriler</option>
+                  {featuredCategories.map((cat) => (
+                    <option key={cat.slug} value={cat.slug}>
+                      {cat.label}
+                    </option>
+                  ))}
+                </select>
+
                 <button
                   type="submit"
                   className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-900 sm:min-w-[120px] dark:text-slate-950"
@@ -175,7 +192,8 @@ export default function HomePage() {
                 </button>
               </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                İstersen yukarıdan kategorilere göre de filtreleyebilirsin.
+                Anahtar kelime yazabilir, istersen kategori seçerek aramayı
+                daraltabilirsin.
               </p>
             </form>
 
@@ -187,7 +205,7 @@ export default function HomePage() {
                 + Hemen ilan ver
               </Link>
               <Link
-                href="/explore"
+                href="/kesfet"
                 className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-100 dark:hover:bg-slate-800"
               >
                 İlanlara göz at
@@ -221,7 +239,7 @@ export default function HomePage() {
             Öne çıkan kategoriler
           </h2>
           <Link
-            href="/explore"
+            href="/kesfet"
             className="text-[11px] text-cyan-600 hover:underline dark:text-cyan-400"
           >
             Tüm ilanları gör →
@@ -231,7 +249,7 @@ export default function HomePage() {
           {featuredCategories.map((cat) => (
             <Link
               key={cat.slug}
-              href={`/explore?category=${encodeURIComponent(cat.slug)}`}
+              href={`/kesfet?category=${encodeURIComponent(cat.slug)}`}
               className="flex flex-col items-start justify-between rounded-2xl border border-slate-200 bg-white px-3 py-3 text-xs shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-900/80"
             >
               <span className="text-base">{cat.emoji}</span>
@@ -288,7 +306,7 @@ export default function HomePage() {
                       <img
                         src={heroImg}
                         alt={item.title}
-                        className="h-32 w-full object-cover"
+                        className="w-full aspect-square object-cover"
                       />
                     ) : (
                       <div className="h-32 w-full bg-gradient-to-br from-cyan-500/30 to-violet-500/30" />
@@ -319,7 +337,7 @@ export default function HomePage() {
             En yeni ilanlar
           </h2>
           <Link
-            href="/explore"
+            href="/kesfet"
             className="text-[11px] text-cyan-600 hover:underline dark:text-cyan-400"
           >
             Tümünü gör →
@@ -354,7 +372,7 @@ export default function HomePage() {
                     <img
                       src={heroImg}
                       alt={item.title}
-                      className="h-32 w-full object-cover"
+                      className="w-full aspect-square object-cover"
                     />
                   ) : (
                     <div className="h-32 w-full bg-gradient-to-br from-cyan-500/30 to-violet-500/30" />
@@ -377,10 +395,10 @@ export default function HomePage() {
         )}
       </section>
 
-      {/* SON BAKTIĞIN İLANLAR (KISA ÖNİZLEME) */}
+      {/* SON BAKTIĞIN İLANLAR */}
       {recentLocal.length > 0 && (
         <section className="space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify_between">
             <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
               Son baktığın ilanlar
             </h2>
@@ -403,7 +421,7 @@ export default function HomePage() {
                   <img
                     src={item.image_url}
                     alt={item.title}
-                    className="h-32 w-full object-cover"
+                    className="w-full aspect-square object-cover"
                   />
                 ) : (
                   <div className="h-32 w-full bg-gradient-to-br from-cyan-500/30 to-violet-500/30" />

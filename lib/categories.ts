@@ -1,105 +1,99 @@
 // lib/categories.ts
 
 export type CategoryItem = {
-  id: string;
-  key: string; // React key için
+  key: string;
   label: string;
 };
 
 export type CategoryGroup = {
-  id: string;
-  key: string; // React key için
-  label: string;
-  items: CategoryItem[];
+  key: string;
+  label: string; // Ana kategori adı
+  items: CategoryItem[]; // Alt kategoriler
 };
 
 export const CATEGORY_GROUPS: CategoryGroup[] = [
   {
-    id: "electronics",
-    key: "electronics",
+    key: "elektronik",
     label: "Elektronik",
     items: [
-      { id: "phone_tablet", key: "phone_tablet", label: "Telefon & Tablet" },
-      { id: "computer", key: "computer", label: "Bilgisayar & Laptop" },
-      { id: "console", key: "console", label: "Oyun Konsolu & Oyunlar" },
-      { id: "tv_audio", key: "tv_audio", label: "TV & Ses Sistemleri" },
-      { id: "accessories", key: "accessories", label: "Aksesuar & Diğer" },
+      { key: "telefon-tablet", label: "Telefon & Tablet" },
+      { key: "bilgisayar-laptop", label: "Bilgisayar & Laptop" },
+      { key: "tv-ses-sistemleri", label: "TV & Ses Sistemleri" },
+      { key: "kulaklik-aksesuar", label: "Kulaklık & Aksesuar" },
+      { key: "foto-kamera", label: "Foto & Kamera" },
+      { key: "giyilebilir-teknoloji", label: "Akıllı Saat & Bileklik" },
     ],
   },
   {
-    id: "home",
-    key: "home",
+    key: "oyun-konsol",
+    label: "Oyun & Konsol",
+    items: [
+      { key: "oyun-konsol", label: "Oyun Konsolu" },
+      { key: "oyunlar", label: "Oyunlar (PC / Konsol)" },
+      { key: "oyun-aksesuarlari", label: "Oyun Aksesuarları" },
+    ],
+  },
+  {
+    key: "ev-yasam",
     label: "Ev & Yaşam",
     items: [
-      { id: "furniture", key: "furniture", label: "Mobilya" },
-      { id: "kitchen", key: "kitchen", label: "Mutfak Eşyaları" },
-      { id: "decor", key: "decor", label: "Dekorasyon" },
-      { id: "lighting", key: "lighting", label: "Aydınlatma" },
-      { id: "other_home", key: "other_home", label: "Diğer Ev Ürünleri" },
+      { key: "mobilya", label: "Mobilya" },
+      { key: "dekorasyon", label: "Dekorasyon" },
+      { key: "beyaz-esya", label: "Beyaz Eşya" },
+      { key: "mutfak-esyalari", label: "Mutfak Eşyaları" },
+      { key: "ev-tekstili", label: "Ev Tekstili" },
     ],
   },
   {
-    id: "fashion",
-    key: "fashion",
-    label: "Giyim & Moda",
+    key: "giyim",
+    label: "Giyim & Aksesuar",
     items: [
-      { id: "women_clothing", key: "women_clothing", label: "Kadın Giyim" },
-      { id: "men_clothing", key: "men_clothing", label: "Erkek Giyim" },
-      { id: "shoes", key: "shoes", label: "Ayakkabı" },
-      { id: "bags", key: "bags", label: "Çanta & Cüzdan" },
-      {
-        id: "accessories_fashion",
-        key: "accessories_fashion",
-        label: "Aksesuar",
-      },
+      { key: "kadin-giyim", label: "Kadın Giyim" },
+      { key: "erkek-giyim", label: "Erkek Giyim" },
+      { key: "ayakkabi", label: "Ayakkabı" },
+      { key: "canta-aksesuar", label: "Çanta & Aksesuar" },
+      { key: "spor-giyim", label: "Spor & Outdoor Giyim" },
     ],
   },
   {
-    id: "hobby",
-    key: "hobby",
-    label: "Hobi & Eğlence",
+    key: "kitap-hobi",
+    label: "Kitap & Hobi",
     items: [
-      { id: "books", key: "books", label: "Kitap" },
-      { id: "board_games", key: "board_games", label: "Masa & Kutu Oyunları" },
-      {
-        id: "music_instruments",
-        key: "music_instruments",
-        label: "Müzik Aletleri",
-      },
-      {
-        id: "collectibles",
-        key: "collectibles",
-        label: "Koleksiyon Ürünleri",
-      },
-      { id: "sports", key: "sports", label: "Spor & Outdoor" },
+      { key: "kitap", label: "Kitap" },
+      { key: "dergi", label: "Dergi & Çizgi Roman" },
+      { key: "enstruman", label: "Müzik Aletleri" },
+      { key: "hobi-urunleri", label: "Hobi & El İşi" },
+      { key: "koleksiyon", label: "Koleksiyon Ürünleri" },
     ],
   },
   {
-    id: "kids",
-    key: "kids",
+    key: "spor-outdoor",
+    label: "Spor & Outdoor",
+    items: [
+      { key: "fitness", label: "Fitness & Spor" },
+      { key: "kamp", label: "Kamp & Outdoor" },
+      { key: "bisiklet", label: "Bisiklet & Scooter" },
+      { key: "diger-spor", label: "Diğer Spor Ürünleri" },
+    ],
+  },
+  {
+    key: "cocuk",
     label: "Bebek & Çocuk",
     items: [
-      { id: "toys", key: "toys", label: "Oyuncaklar" },
-      { id: "baby_clothing", key: "baby_clothing", label: "Bebek Giyim" },
-      { id: "kids_clothing", key: "kids_clothing", label: "Çocuk Giyim" },
-      { id: "stroller", key: "stroller", label: "Bebek Arabası & Eşyaları" },
-      { id: "kids_other", key: "kids_other", label: "Diğer Ürünler" },
+      { key: "bebek-arabasi", label: "Bebek Arabası & Oto Koltuğu" },
+      { key: "cocuk-giyim", label: "Çocuk Giyimi" },
+      { key: "oyuncak", label: "Oyuncak" },
+      { key: "bebek-bakim", label: "Bebek Bakım Ürünleri" },
     ],
   },
   {
-    id: "other",
-    key: "other",
+    key: "diger",
     label: "Diğer",
-    items: [
-      { id: "pet", key: "pet", label: "Evcil Hayvan Ürünleri" },
-      { id: "auto", key: "auto", label: "Oto Aksesuar" },
-      { id: "office", key: "office", label: "Ofis & Kırtasiye" },
-      { id: "services", key: "services", label: "Hizmet İlanları" },
-      { id: "misc", key: "misc", label: "Çeşitli Ürünler" },
-    ],
+    items: [{ key: "diger-urunler", label: "Diğer Ürünler" }],
   },
 ];
 
-export const CATEGORY_OPTIONS: CategoryItem[] = CATEGORY_GROUPS.flatMap(
-  (group) => group.items
+// Keşfet ve filtrelerde kullanmak için düz liste:
+export const ALL_CATEGORY_LABELS: string[] = CATEGORY_GROUPS.flatMap((g) =>
+  g.items.map((i) => i.label)
 );

@@ -61,6 +61,16 @@ export default function Footer() {
                 Kullanım Şartları
               </Link>
             </li>
+
+            {/* 🆕 EKLENEN LİNK */}
+            <li>
+              <Link
+                href="/bilgilendirme"
+                className="hover:text-cyan-600 dark:hover:text-cyan-300"
+              >
+                Alıcı & Satıcı Bilgilendirme
+              </Link>
+            </li>
           </ul>
         </div>
 
@@ -72,9 +82,7 @@ export default function Footer() {
               <Link
                 href="/help"
                 className="hover:text-cyan-600 dark:hover:text-cyan-300"
-              >
-                Yardım Merkezi
-              </Link>
+              ></Link>
             </li>
             <li>
               <Link
@@ -91,6 +99,9 @@ export default function Footer() {
               >
                 Destek Talebi
               </Link>
+            </li>
+            <li>
+              <Link href="/kurumsal/kargo-ve-iade">Kargo &amp; İade</Link>
             </li>
           </ul>
         </div>

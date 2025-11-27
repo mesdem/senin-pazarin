@@ -14,4 +14,5 @@ export type Listing = {
 
 export type ListingWithImages = Listing & {
   images?: { image_url: string }[];
+  ships_in_24h?: boolean;
 };
